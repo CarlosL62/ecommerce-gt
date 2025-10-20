@@ -25,8 +25,8 @@ public class User {
     @Column(nullable = false)
     private Role role = Role.COMMON;
 
-    @Column(nullable = false)
-    private boolean active;
+    @Column(nullable = false, columnDefinition = "BOOLEAN DEFAULT TRUE")
+    private boolean active = true;
 
     public User(String name, String email, String password, Role role) {
         this.name = name;
