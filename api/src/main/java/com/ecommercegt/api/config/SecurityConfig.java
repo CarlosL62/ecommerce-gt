@@ -29,13 +29,17 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .authorizeHttpRequests(auth -> auth
                         // public endpoints
-                        .requestMatchers("/api/hello", "/api/auth/**").permitAll()
+                        .requestMatchers("/api/auth/**").permitAll()
+                        // Role-based access control can also be done at the method level using @PreAuthorize
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/moderation/**").hasRole("MODERATOR")
+                        .requestMatchers("/api/products/**").hasRole("COMMON")
+                        .requestMatchers("/api/cart/**").hasRole("COMMON")
                         // protected endpoints
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
-                .httpBasic(Customizer.withDefaults()); // temporal
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 

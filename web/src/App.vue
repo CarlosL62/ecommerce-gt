@@ -1,15 +1,15 @@
 <script setup>
 // App shell with a full‑width top bar. Uses Pinia auth store for state.
-import { onMounted } from "vue";
-import { useRouter } from "vue-router";
-import { useAuthStore } from "./stores/auth";
+import {onMounted} from "vue";
+import {useRouter} from "vue-router";
+import {useAuthStore} from "./stores/auth";
 
 const router = useRouter();
 const auth = useAuthStore();
 
 function logout() {
   auth.logout();
-  router.push({ name: "login" });
+  router.push({name: "login"});
 }
 
 onMounted(() => {
@@ -27,7 +27,7 @@ window.addEventListener("storage", (e) => {
       auth.me();
     } else {
       auth.logout();
-      router.push({ name: "login" });
+      router.push({name: "login"});
     }
   }
 });
@@ -53,6 +53,22 @@ window.addEventListener("storage", (e) => {
             <router-link class="nav__link" :to="{ name: 'admin-reports' }">Reportes</router-link>
           </template>
 
+          <!-- USER: show user children routes directly -->
+          <template v-else-if="auth.role === 'COMMON'">
+            <router-link class="nav__link" :to="{ name: 'user-catalog' }">Catálogo</router-link>
+            <router-link class="nav__link" :to="{ name: 'user-cart' }">Mi carrito</router-link>
+            <router-link class="nav__link" :to="{ name: 'user-orders' }">Mis órdenes</router-link>
+            <router-link class="nav__link" :to="{ name: 'user-publish' }">Mis productos</router-link>
+          </template>
+
+          <!-- MODERATOR: show moderation tools -->
+          <template v-else-if="auth.role === 'MODERATOR'">
+            <router-link class="nav__link" :to="{ name: 'mod-review' }">Revisión</router-link>
+            <router-link class="nav__link" :to="{ name: 'mod-approved' }">Aprobados</router-link>
+            <router-link class="nav__link" :to="{ name: 'mod-rejected' }">Rechazados</router-link>
+            <router-link class="nav__link" :to="{ name: 'mod-users' }">Usuarios</router-link>
+          </template>
+
           <!-- Other roles: placeholder for future modules (kept empty to avoid dead links) -->
           <template v-else>
             <!-- e.g., show moderation/logistics links when those sections are ready -->
@@ -70,7 +86,7 @@ window.addEventListener("storage", (e) => {
   </header>
 
   <main class="page">
-    <router-view />
+    <router-view/>
   </main>
 </template>
 
@@ -87,7 +103,7 @@ window.addEventListener("storage", (e) => {
   align-items: center;
   justify-content: space-between;
   padding: .75rem 1rem;
-  box-shadow: 0 0 0 1px rgba(0,0,0,.02), 0 1px 2px rgba(0,0,0,.04);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .02), 0 1px 2px rgba(0, 0, 0, .04);
 }
 
 .appbar__left {
@@ -137,7 +153,7 @@ window.addEventListener("storage", (e) => {
   color: #374151;
 }
 
- .btn {
+.btn {
   padding: .44rem .8rem;
   border: none;
   background: #ef4444; /* red-500 */
@@ -146,12 +162,17 @@ window.addEventListener("storage", (e) => {
   cursor: pointer;
   font-weight: 600;
   letter-spacing: .2px;
-  box-shadow: 0 1px 1px rgba(0,0,0,.06);
+  box-shadow: 0 1px 1px rgba(0, 0, 0, .06);
   transition: background-color .15s ease, transform .05s ease;
 }
 
-.btn:hover { background: #dc2626; /* red-600 */ }
-.btn:active { transform: translateY(1px); }
+.btn:hover {
+  background: #dc2626; /* red-600 */
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
 
 /* --- Page area occupies the rest of the viewport --- */
 .page {
@@ -161,17 +182,35 @@ window.addEventListener("storage", (e) => {
 
 /* --- Small screens: keep the bar compact without jumping elements --- */
 @media (max-width: 640px) {
-  .brand { font-size: 1rem; }
-  .nav__link { padding: .35rem .55rem; }
-  .who { display: none; } /* keep it clean on very small devices */
+  .brand {
+    font-size: 1rem;
+  }
+
+  .nav__link {
+    padding: .35rem .55rem;
+  }
+
+  .who {
+    display: none;
+  }
+
+  /* keep it clean on very small devices */
 }
 </style>
 
 <style>
 /* Global reset to ensure the top bar spans the full viewport width */
-html, body, #app { height: 100%; }
-body { margin: 0; }
-*, *::before, *::after { box-sizing: border-box; }
+html, body, #app {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
 
 /* Override Vite default that centers #app with max-width */
 #app {
