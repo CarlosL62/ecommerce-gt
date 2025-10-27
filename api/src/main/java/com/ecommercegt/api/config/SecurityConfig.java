@@ -49,8 +49,9 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowCredentials(true);
         config.addAllowedOrigin("http://localhost:5173"); // Dev frontend
-        config.addAllowedOrigin("https://ecommercegt-byme.netlify.app/"); // Production frontend
-        config.addAllowedOrigin("https://georgann-restless-acquiescingly.ngrok-free.dev"); // Ngrok tunnel
+        config.addAllowedOrigin("https://ecommercegt-byme.netlify.app"); // Production frontend (no trailing slash)
+        config.addAllowedOriginPattern("https://*.ngrok-free.app"); // Any ngrok https endpoint
+        config.addAllowedOriginPattern("https://*.ngrok-free.dev"); // (if tunnel uses .dev)
 
         config.addAllowedHeader("*"); // Content-Type, Authorization, etc.
         config.addAllowedMethod("GET");
