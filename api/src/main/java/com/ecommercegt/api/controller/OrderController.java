@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/orders")
-@PreAuthorize("hasRole('COMMON')")
+//@PreAuthorize("hasRole('COMMON')")
 @RequiredArgsConstructor
 public class OrderController {
 
@@ -47,6 +47,7 @@ public class OrderController {
             List<OrderLineDTO> items
     ) {}
 
+    @PreAuthorize("hasRole('COMMON')")
     @PostMapping("/checkout")
     public OrderSummary doCheckout(@RequestBody CheckoutRequest req, Principal principal) {
         Long buyerId = users.findByEmail(principal.getName()).orElseThrow().getId();
@@ -54,6 +55,7 @@ public class OrderController {
         return toSummary(o);
     }
 
+    @PreAuthorize("hasRole('COMMON')")
     @GetMapping("/mine")
     public List<OrderSummary> myOrders(Principal principal) {
         User user = users.findByEmail(principal.getName()).orElseThrow();
@@ -87,5 +89,40 @@ public class OrderController {
                 it.getQuantity(),
                 it.getLineTotal()
         );
+    }
+
+    @PreAuthorize("hasRole('LOGISTICS')")
+    @GetMapping
+    public List<OrderSummary> listByStatus(@RequestParam(name = "status", required = false) String status) {
+        if (status == null || status.isBlank()) {
+            return orders.findAll().stream().map(this::toSummary).toList();
+        }
+        Order.Status s = Order.Status.valueOf(status.toUpperCase());
+        return orders.findAll().stream()
+                .filter(o -> o.getStatus() == s)
+                .map(this::toSummary)
+                .toList();
+    }
+
+    @PatchMapping("/{id}/ship")
+    @PreAuthorize("hasRole('LOGISTICS')")
+    public OrderSummary markShipped(@PathVariable Long id) {
+        var o = orders.findById(id).orElseThrow();
+        if (o.getStatus() != Order.Status.DELIVERED && o.getStatus() != Order.Status.SHIPPED) {
+            o.setStatus(Order.Status.SHIPPED);
+            orders.save(o);
+        }
+        return toSummary(o);
+    }
+
+    @PatchMapping("/{id}/deliver")
+    @PreAuthorize("hasRole('LOGISTICS')")
+    public OrderSummary markDelivered(@PathVariable Long id) {
+        var o = orders.findById(id).orElseThrow();
+        if (o.getStatus() != Order.Status.DELIVERED) {
+            o.setStatus(Order.Status.DELIVERED);
+            orders.save(o);
+        }
+        return toSummary(o);
     }
 }

@@ -69,9 +69,9 @@ window.addEventListener("storage", (e) => {
             <router-link class="nav__link" :to="{ name: 'mod-users' }">Usuarios</router-link>
           </template>
 
-          <!-- Other roles: placeholder for future modules (kept empty to avoid dead links) -->
-          <template v-else>
-            <!-- e.g., show moderation/logistics links when those sections are ready -->
+          <!-- LOGISTICS: shipment workflow -->
+          <template v-else-if="auth.role === 'LOGISTICS'">
+            <router-link class="nav__link" :to="{ name: 'log-orders' }">Ordenes</router-link>
           </template>
         </template>
       </nav>

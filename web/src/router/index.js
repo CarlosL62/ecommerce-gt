@@ -18,6 +18,8 @@ const ModeratorReview = () => import("../views/moderator/ModeratorReview.vue");
 const ModeratorApproved = () => import("../views/moderator/ModeratorApproved.vue");
 const ModeratorRejected = () => import("../views/moderator/ModeratorRejected.vue");
 const ModeratorUsers = () => import("../views/moderator/ModeratorUsers.vue");
+const LogisticsLayout = () => import("../views/LogisticsLayout.vue");
+const LogisticsOrders = () => import("../views/logistics/LogisticsOrders.vue");
 
 const router = createRouter({
     history: createWebHistory(),
@@ -48,6 +50,15 @@ const router = createRouter({
                 { path: "rejected", name: "mod-rejected", component: ModeratorRejected },
                 { path: "users", name: "mod-users", component: ModeratorUsers },
                 { path: "", redirect: { name: "mod-review" } },
+            ],
+        },
+        {
+            path: "/logistics",
+            component: LogisticsLayout,
+            meta: { requiresAuth: true, role: "LOGISTICS" },
+            children: [
+                { path: "orders", name: "log-orders", component: LogisticsOrders },
+                { path: "", redirect: { name: "log-orders" } },
             ],
         },
         // User parent layout and children
