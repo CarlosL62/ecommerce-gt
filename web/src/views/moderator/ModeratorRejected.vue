@@ -1,56 +1,32 @@
 <script setup>
 /** Lists rejected products; allows to reopen to review */
 import { ref, onMounted } from 'vue'
-const API = import.meta.env.VITE_API_BASE ?? 'http://localhost:8080'
+import http from '../../api/http'
 
 const PLACEHOLDER = '/img/placeholder.png'
 const items = ref([])
 const loading = ref(false)
 const errorMsg = ref('')
 
-function getToken() {
-  return (
-    localStorage.getItem('token') ||
-    sessionStorage.getItem('token') ||
-    localStorage.getItem('jwt') ||
-    sessionStorage.getItem('jwt') ||
-    ''
-  )
-}
-
-function authHeaders() {
-  const t = getToken()
-  return {
-    'Content-Type': 'application/json',
-    ...(t ? { 'Authorization': `Bearer ${t}` } : {})
-  }
-}
-
-if (!getToken()) {
-  errorMsg.value = 'No auth token found. Please log in as MODERATOR.'
-}
-
 async function load() {
   loading.value = true; errorMsg.value = ''
   try {
-    const res = await fetch(`${API}/api/moderation/products?status=REJECTED`, { headers: authHeaders() })
-    if (!res.ok) {
-      const body = await res.text()
-      throw new Error(`HTTP ${res.status} - ${body || 'Access denied / Invalid request'}`)
-    }
-    items.value = await res.json()
-  } catch (e) { errorMsg.value = String(e) } finally { loading.value = false }
+    const { data } = await http.get('/api/moderation/products', { params: { status: 'REJECTED' } })
+    items.value = Array.isArray(data) ? data : (Array.isArray(data?.items) ? data.items : [])
+  } catch (e) {
+    errorMsg.value = e?.response?.data?.message || e?.message || 'No se pudieron cargar los productos'
+  } finally {
+    loading.value = false
+  }
 }
 
 async function reopen(id) {
   try {
-    const res = await fetch(`${API}/api/moderation/products/${id}/reopen`, { method: 'PATCH', headers: authHeaders() })
-    if (!res.ok) {
-      const body = await res.text()
-      throw new Error(`HTTP ${res.status} - ${body || 'Access denied / Invalid request'}`)
-    }
+    await http.patch(`/api/moderation/products/${id}/reopen`)
     await load()
-  } catch (e) { errorMsg.value = String(e) }
+  } catch (e) {
+    errorMsg.value = e?.response?.data?.message || e?.message || 'No se pudo reabrir la revisión'
+  }
 }
 
 function onImgErr(e) {

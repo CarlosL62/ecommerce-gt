@@ -1,37 +1,12 @@
 <script setup>
 /** Lists approved products; allows sending back to review */
 import { ref, onMounted } from 'vue'
+import http from '../../api/http'
 
 const items = ref([])
 const loading = ref(false)
 const errorMsg = ref('')
 const working = ref({}) // track per-item actions
-
-// Absolute API base (env or fallback)
-const API = import.meta.env.VITE_API_BASE ?? 'http://localhost:8080'
-
-function getToken() {
-  return (
-    localStorage.getItem('token') ||
-    sessionStorage.getItem('token') ||
-    localStorage.getItem('jwt') ||
-    sessionStorage.getItem('jwt') ||
-    ''
-  )
-}
-
-function authHeaders() {
-  const t = getToken()
-  return {
-    'Content-Type': 'application/json',
-    ...(t ? { 'Authorization': `Bearer ${t}` } : {})
-  }
-}
-
-// Early guard: surface missing token instead of doing blind calls
-if (!getToken()) {
-  errorMsg.value = 'No auth token found. Please log in as MODERATOR.'
-}
 
 const PLACEHOLDER = '/img/placeholder.png'
 
@@ -42,29 +17,29 @@ function onImgErr(e) {
 async function load() {
   loading.value = true; errorMsg.value = ''
   try {
-    const res = await fetch(`${API}/api/moderation/products?status=APPROVED`, { headers: authHeaders() })
-    if (!res.ok) {
-      const body = await res.text()
-      throw new Error(`HTTP ${res.status} - ${body || 'Access denied / Invalid request'}`)
-    }
-    items.value = await res.json()
-  } catch (e) { errorMsg.value = String(e) } finally { loading.value = false }
+    const { data } = await http.get('/api/moderation/products', { params: { status: 'APPROVED' } })
+    items.value = Array.isArray(data) ? data : (Array.isArray(data?.items) ? data.items : [])
+  } catch (e) {
+    errorMsg.value = e?.response?.data?.message || e?.message || 'No se pudieron cargar los productos'
+  } finally {
+    loading.value = false
+  }
 }
 
 async function reopen(id) {
   working.value[id] = true; errorMsg.value = ''
   try {
-    const res = await fetch(`${API}/api/moderation/products/${id}/reopen`, { method: 'PATCH', headers: authHeaders() })
-    if (!res.ok) {
-      const body = await res.text()
-      throw new Error(`HTTP ${res.status} - ${body || 'Access denied / Invalid request'}`)
-    }
+    await http.patch(`/api/moderation/products/${id}/reopen`)
     await load()
-  } catch (e) { errorMsg.value = String(e) } finally { working.value[id] = false }
+  } catch (e) {
+    errorMsg.value = e?.response?.data?.message || e?.message || 'No se pudo enviar a revisión'
+  } finally {
+    working.value[id] = false
+  }
 }
 
 onMounted(() => {
-  if (getToken()) load()
+  load()
 })
 </script>
 

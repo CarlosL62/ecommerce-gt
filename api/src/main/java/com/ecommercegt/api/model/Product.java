@@ -55,7 +55,7 @@ public class Product {
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal price;
 
-    @Min(1) // Business rule: stock must be at least 1
+    @Min(0)
     @Column(nullable = false)
     private Integer stock;
 

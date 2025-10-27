@@ -6,9 +6,7 @@
 // - Shows friendly feedback messages
 
 import { ref, reactive, computed, onMounted } from 'vue'
-
-// ---- config ----
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080'
+import http from '../../api/http'
 
 // ---- options ----
 const conditions = [
@@ -115,54 +113,19 @@ function closeEditor() {
   showEditor.value = false
 }
 
-// ---- API helpers ----
-function getToken() {
-  return localStorage.getItem('token') || ''
-}
-async function apiGet(url) {
-  const res = await fetch(url, {
-    headers: { 'Authorization': `Bearer ${getToken()}` }
-  })
-  const ct = res.headers.get('Content-Type') || ''
-  const isJson = ct.includes('application/json')
-  const data = isJson ? await res.json() : await res.text()
-  if (!res.ok) {
-    const err = new Error(isJson ? (data.message || JSON.stringify(data)) : String(data))
-    err.status = res.status
-    throw err
-  }
-  return data
-}
-async function apiSend(url, method, payload) {
-  const res = await fetch(url, {
-    method,
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${getToken()}`
-    },
-    body: JSON.stringify(payload)
-  })
-  const ct = res.headers.get('Content-Type') || ''
-  const isJson = ct.includes('application/json')
-  const data = isJson ? await res.json() : await res.text()
-  if (!res.ok) throw new Error(isJson ? (data.message || JSON.stringify(data)) : String(data))
-  return data
-}
-
 // ---- list loader ----
 async function loadMine() {
   listError.value = ''
   listLoading.value = true
   try {
-    const data = await apiGet(`${API_BASE}/api/products/mine`)
+    const { data } = await http.get('/api/products/mine')
     items.value = Array.isArray(data) ? data : []
   } catch (e) {
-    // If unauthorized/forbidden/not found, show empty list instead of error
-    if (e && (e.status === 401 || e.status === 403 || e.status === 404)) {
+    if (e && (e.response?.status === 401 || e.response?.status === 403 || e.response?.status === 404)) {
       items.value = []
       listError.value = ''
     } else {
-      listError.value = e?.message || 'Error al cargar productos'
+      listError.value = e?.response?.data?.message || e?.message || 'Error al cargar productos'
     }
   } finally {
     listLoading.value = false
@@ -189,17 +152,16 @@ async function onSubmit() {
   loading.value = true
   try {
     if (mode.value === 'create') {
-      await apiSend(`${API_BASE}/api/products`, 'POST', payload)
+      await http.post('/api/products', payload)
       apiOk.value = 'Producto enviado a revisión.'
     } else {
-      // NOTE: backend PUT /api/products/{id} must exist; front is ready for it.
-      await apiSend(`${API_BASE}/api/products/${editingId.value}`, 'PUT', payload)
+      await http.put(`/api/products/${editingId.value}`, payload)
       apiOk.value = 'Producto actualizado (en revisión).'
     }
     await loadMine()
     closeEditor()
   } catch (err) {
-    apiError.value = err?.message || 'Error al guardar.'
+    apiError.value = err?.response?.data?.message || err?.message || 'Error al guardar.'
   } finally {
     loading.value = false
   }

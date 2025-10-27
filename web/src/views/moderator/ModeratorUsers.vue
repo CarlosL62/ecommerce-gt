@@ -5,72 +5,48 @@
  * - Allows to suspend / activate directly from the table
  */
 import { ref, onMounted } from 'vue'
+import http from '../../api/http'
 
-const API = import.meta.env.VITE_API_BASE ?? 'http://localhost:8080'
-
-function getToken() {
-  return (
-    localStorage.getItem('token') ||
-    sessionStorage.getItem('token') ||
-    localStorage.getItem('jwt') ||
-    sessionStorage.getItem('jwt') ||
-    ''
-  )
-}
-
-function authHeaders() {
-  const t = getToken()
-  return {
-    'Content-Type': 'application/json',
-    ...(t ? { 'Authorization': `Bearer ${t}` } : {})
-  }
-}
 
 const loading = ref(false)
 const working = ref({})
 const errorMsg = ref('')
 const users = ref([])
 
-if (!getToken()) {
-  errorMsg.value = 'No auth token found. Please log in as MODERATOR.'
-}
-
 async function load() {
   loading.value = true; errorMsg.value = ''
   try {
-    const res = await fetch(`${API}/api/moderation/users?role=COMMON`, { headers: authHeaders() })
-    if (!res.ok) {
-      const body = await res.text()
-      throw new Error(`HTTP ${res.status} - ${body || 'Access denied / Invalid request'}`)
-    }
-    users.value = await res.json()
+    const { data } = await http.get('/api/moderation/users', { params: { role: 'COMMON' } })
+    users.value = Array.isArray(data) ? data : (Array.isArray(data?.items) ? data.items : [])
   } catch (e) {
-    errorMsg.value = String(e)
-  } finally { loading.value = false }
+    errorMsg.value = e?.response?.data?.message || e?.message || 'No se pudieron cargar los usuarios'
+  } finally {
+    loading.value = false
+  }
 }
 
 async function suspend(id) {
   working.value[id] = true; errorMsg.value = ''
   try {
-    const res = await fetch(`${API}/api/moderation/users/${id}/suspend`, { method: 'PATCH', headers: authHeaders() })
-    if (!res.ok) {
-      const body = await res.text()
-      throw new Error(`HTTP ${res.status} - ${body || 'Access denied / Invalid request'}`)
-    }
+    await http.patch(`/api/moderation/users/${id}/suspend`)
     await load()
-  } catch (e) { errorMsg.value = String(e) } finally { working.value[id] = false }
+  } catch (e) {
+    errorMsg.value = e?.response?.data?.message || e?.message || 'No se pudo suspender el usuario'
+  } finally {
+    working.value[id] = false
+  }
 }
 
 async function activate(id) {
   working.value[id] = true; errorMsg.value = ''
   try {
-    const res = await fetch(`${API}/api/moderation/users/${id}/activate`, { method: 'PATCH', headers: authHeaders() })
-    if (!res.ok) {
-      const body = await res.text()
-      throw new Error(`HTTP ${res.status} - ${body || 'Access denied / Invalid request'}`)
-    }
+    await http.patch(`/api/moderation/users/${id}/activate`)
     await load()
-  } catch (e) { errorMsg.value = String(e) } finally { working.value[id] = false }
+  } catch (e) {
+    errorMsg.value = e?.response?.data?.message || e?.message || 'No se pudo activar el usuario'
+  } finally {
+    working.value[id] = false
+  }
 }
 
 onMounted(load)

@@ -70,15 +70,27 @@ public class ProductController {
         );
     }
 
-    // COMMON creates product in IN_REVIEW
-    @PostMapping
-    public ProductResponse create(Authentication auth, @RequestBody CreateProductRequest req) {
-        // --- basic validations aligned with front rules ---
-        if (req.name == null || req.name.trim().length() < 3 || req.name.trim().length() > 80)
+    // Centralized validation + parsing to remove duplication
+    private record Validated(
+            String name,
+            String description,
+            String imageUrl,
+            BigDecimal price,
+            Integer stock,
+            Product.Condition condition,
+            Product.Category category
+    ) {}
+
+    private Validated validate(CreateProductRequest req) {
+        if (req == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Datos requeridos");
+        var name = (req.name == null ? "" : req.name.trim());
+        var description = (req.description == null ? "" : req.description.trim());
+        var imageUrl = (req.imageUrl == null ? "" : req.imageUrl.trim());
+        if (name.length() < 3 || name.length() > 80)
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Nombre inválido");
-        if (req.description == null || req.description.trim().length() < 10 || req.description.trim().length() > 500)
+        if (description.length() < 10 || description.length() > 500)
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Descripción inválida");
-        if (req.imageUrl == null || req.imageUrl.trim().isEmpty())
+        if (imageUrl.isEmpty())
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Imagen requerida");
         if (req.price == null || req.price.signum() <= 0)
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Precio inválido");
@@ -86,26 +98,39 @@ public class ProductController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Stock inválido");
         if (req.condition == null || req.category == null)
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Condición y categoría requeridas");
-
-        Product.Condition cond;
-        Product.Category cat;
         try {
-            cond = Product.Condition.valueOf(req.condition);
-            cat  = Product.Category.valueOf(req.category);
+            var cond = Product.Condition.valueOf(req.condition);
+            var cat  = Product.Category.valueOf(req.category);
+            return new Validated(name, description, imageUrl, req.price, req.stock, cond, cat);
         } catch (IllegalArgumentException ex) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Condición o categoría inválida");
         }
+    }
+
+    private Product requireOwned(Authentication auth, Long id) {
+        var user = me(auth);
+        var p = products.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Producto no encontrado"));
+        if (!p.getOwner().getId().equals(user.getId()))
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No puedes editar este producto");
+        return p;
+    }
+
+    // COMMON creates product in IN_REVIEW
+    @PostMapping
+    public ProductResponse create(Authentication auth, @RequestBody CreateProductRequest req) {
+        var v = validate(req);
 
         var user = me(auth);
         var p = new Product();
         p.setOwner(user);
-        p.setName(req.name.trim());
-        p.setDescription(req.description.trim());
-        p.setImageUrl(req.imageUrl.trim());
-        p.setPrice(req.price);
-        p.setStock(req.stock);
-        p.setCondition(cond);
-        p.setCategory(cat);
+        p.setName(v.name());
+        p.setDescription(v.description());
+        p.setImageUrl(v.imageUrl());
+        p.setPrice(v.price());
+        p.setStock(v.stock());
+        p.setCondition(v.condition());
+        p.setCategory(v.category());
         p.setStatus(Product.Status.IN_REVIEW);
 
         return toDto(products.save(p));
@@ -123,5 +148,28 @@ public class ProductController {
     public List<ProductResponse> catalog() {
         return products.findAllByStatusOrderByCreatedAtDesc(Product.Status.APPROVED)
                 .stream().map(this::toDto).toList();
+    }
+
+    // COMMON: update own product and send to review again
+    @PutMapping("/{id}")
+    public ProductResponse update(Authentication auth, @PathVariable Long id, @RequestBody CreateProductRequest req) {
+        var v = validate(req);
+
+        var p = requireOwned(auth, id);
+        p.setName(v.name());
+        p.setDescription(v.description());
+        p.setImageUrl(v.imageUrl());
+        p.setPrice(v.price());
+        p.setStock(v.stock());
+        p.setCondition(v.condition());
+        p.setCategory(v.category());
+        p.setStatus(Product.Status.IN_REVIEW);
+        return toDto(products.save(p));
+    }
+
+    // PATCH variante: mismo comportamiento, permite compatibilidad con front
+    @PatchMapping("/{id}")
+    public ProductResponse patch(Authentication auth, @PathVariable Long id, @RequestBody CreateProductRequest req) {
+        return update(auth, id, req);
     }
 }

@@ -5,7 +5,7 @@
  * - Actions: Approve, Reject
  */
 import { ref, onMounted } from 'vue'
-const API = import.meta.env.VITE_API_BASE ?? 'http://localhost:8080'
+import http from '../../api/http'
 
 // Fallback placeholder for broken/missing images
 const PLACEHOLDER = "data:image/svg+xml;utf8,\
@@ -18,44 +18,17 @@ function onImgErr(e) {
   if (e && e.target) e.target.src = PLACEHOLDER;
 }
 
-function getToken() {
-  return (
-    localStorage.getItem('token') ||
-    sessionStorage.getItem('token') ||
-    localStorage.getItem('jwt') ||
-    sessionStorage.getItem('jwt') ||
-    ''
-  )
-}
-
-function authHeaders() {
-  const t = getToken()
-  return {
-    'Content-Type': 'application/json',
-    ...(t ? { 'Authorization': `Bearer ${t}` } : {})
-  }
-}
-
 const loading = ref(false)
 const errorMsg = ref('')
 const items = ref([])
 
-if (!getToken()) {
-  errorMsg.value = 'No auth token found. Please log in as MODERATOR.'
-}
-
 async function load() {
-  loading.value = true
-  errorMsg.value = ''
+  loading.value = true; errorMsg.value = ''
   try {
-    const res = await fetch(`${API}/api/moderation/products?status=IN_REVIEW`, { headers: authHeaders() })
-    if (!res.ok) {
-      const body = await res.text()
-      throw new Error(`HTTP ${res.status} - ${body || 'Access denied / Invalid request'}`)
-    }
-    items.value = await res.json()
+    const { data } = await http.get('/api/moderation/products', { params: { status: 'IN_REVIEW' } })
+    items.value = Array.isArray(data) ? data : (Array.isArray(data?.items) ? data.items : [])
   } catch (e) {
-    errorMsg.value = String(e)
+    errorMsg.value = e?.response?.data?.message || e?.message || 'No se pudieron cargar los productos'
   } finally {
     loading.value = false
   }
@@ -63,24 +36,20 @@ async function load() {
 
 async function approve(id) {
   try {
-    const res = await fetch(`${API}/api/moderation/products/${id}/approve`, { method: 'PATCH', headers: authHeaders() })
-    if (!res.ok) {
-      const body = await res.text()
-      throw new Error(`HTTP ${res.status} - ${body || 'Access denied / Invalid request'}`)
-    }
+    await http.patch(`/api/moderation/products/${id}/approve`)
     await load()
-  } catch (e) { errorMsg.value = String(e) }
+  } catch (e) {
+    errorMsg.value = e?.response?.data?.message || e?.message || 'No se pudo aprobar el producto'
+  }
 }
 
 async function reject(id) {
   try {
-    const res = await fetch(`${API}/api/moderation/products/${id}/reject`, { method: 'PATCH', headers: authHeaders() })
-    if (!res.ok) {
-      const body = await res.text()
-      throw new Error(`HTTP ${res.status} - ${body || 'Access denied / Invalid request'}`)
-    }
+    await http.patch(`/api/moderation/products/${id}/reject`)
     await load()
-  } catch (e) { errorMsg.value = String(e) }
+  } catch (e) {
+    errorMsg.value = e?.response?.data?.message || e?.message || 'No se pudo rechazar el producto'
+  }
 }
 
 onMounted(load)
