@@ -31,7 +31,7 @@ public class SecurityConfig {
                         // public endpoints
                         .requestMatchers("/api/auth/**").permitAll()
                         // Role-based access control can also be done at the method level using @PreAuthorize
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/admin/**", "/api/reports/**").hasRole("ADMIN")
                         .requestMatchers("/api/moderation/**").hasRole("MODERATOR")
                         .requestMatchers("/api/orders/*/ship", "/api/orders/*/deliver").hasRole("LOGISTICS")
                         .requestMatchers("/api/products/**").hasRole("COMMON")
