@@ -185,7 +185,9 @@ erDiagram
 
 ## 3) Esquema Físico — PostgreSQL
 
-La definición DDL completa está en: `db/schema.sql`
+La definición DDL completa está en: [DDL.sql](db/DDL.md)
+
+La carga de datos iniciales (seeds) está en: [DML.sql](db/DML.md)
 
 Incluye:
 - `CHECK` para dominios (roles, estatus, categorías, etc.)
